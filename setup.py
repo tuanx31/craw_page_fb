@@ -3,7 +3,7 @@ import os
 from cx_Freeze import setup, Executable
 
 # Đường dẫn tới file script.py
-script = "E:\TOOL\craw data\main.py"
+script = r"E:\TOOL\craw data\main.py"
 
 # Các thư viện được sử dụng trong chương trình
 includes = ["PyQt6","sys","selenium","time","MySQLdb"]
@@ -25,5 +25,5 @@ setup(
     version="1.0",
     description="Description ssss",
     options=options,
-    executables=[Executable(script, base=base)]
+    executables=[Executable(script,base=base)]
 )

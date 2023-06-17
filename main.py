@@ -12,10 +12,15 @@ import time
 from dialog import *
 import MySQLdb
 def convert_views_to_number(views_str):
-    views_str = views_str.replace(" views", "")  # Loại bỏ " views" từ chuỗi
+    views_str = views_str.replace(" lượt xem", "")  # Loại bỏ " lượt xem" từ chuỗi
     if "K" in views_str:
-        views_str = views_str.replace("K", "")
-        views = float(views_str) * 1000
+        if ',' in views_str:
+            views_str = views_str.replace(",", "")
+            views_str = views_str.replace("K", "")
+            views = float(views_str) * 100
+        else:
+            views_str = views_str.replace("K", "")
+            views = float(views_str) * 1000
     else:
         views = int(views_str)
     return int(views)
@@ -43,16 +48,16 @@ class Crawdata(QMainWindow):
         
         super(Crawdata,self).__init__()
         uic.loadUi('crawdata.ui',self)
-        self.tableWidget.setColumnWidth(0,250)
-        self.tableWidget.setColumnWidth(1,120)
-        self.tableWidget.setColumnWidth(2,110)
-        self.tableWidget.setColumnWidth(3,110)
-        self.tableWidget.setColumnWidth(4,110)
-        self.tableWidget.setColumnWidth(5,110)
+        self.tableWidget.setColumnWidth(0,350)
+        self.tableWidget.setColumnWidth(1,150)
+        self.tableWidget.setColumnWidth(2,130)
+        self.tableWidget.setColumnWidth(3,130)
+        self.tableWidget.setColumnWidth(4,130)
+        self.tableWidget.setColumnWidth(5,130)
         self.list_link = []
         self.thread = {}
         self.start.clicked.connect(self.startt)
-        self.stop.clicked.connect(lambda : self.opendialog())
+        self.stop.clicked.connect(self.stopp)
         self.current_row = 0
     def opendialog(self):
         button = self.sender()
@@ -77,12 +82,12 @@ class Crawdata(QMainWindow):
         
         self.quocgia = QLineEdit()
         self.tableWidget.setCellWidget(solink,1,self.quocgia)
-        self.quocgia.setText(lst[1])
+        self.quocgia.setText(lst[2])
 
 
         self.fle = QLineEdit()
         self.tableWidget.setCellWidget(solink,2,self.fle)
-        self.fle.setText(lst[2])
+        self.fle.setText(lst[1])
 
         self.soluong = QLineEdit()
         self.tableWidget.setCellWidget(solink,3,self.soluong)
@@ -111,7 +116,7 @@ class Crawdata(QMainWindow):
             self.thread[1].start()
             self.thread[1].signal.connect(self.thongbao)
             self.thread[1].siganal.connect(self.setthuoctinh)
-
+            self.thread[1].tbao.connect(self.settbao)
             self.start.setDisabled(True)
             self.stop.setEnabled(True)
     def thongbao(self,u):
@@ -124,7 +129,8 @@ class Crawdata(QMainWindow):
         # Gửi tín hiệu yêu cầu kết thúc luồng
         self.thread[1].stop()
         event.accept()
-
+    def settbao(self,ssss):
+        self.label_3.setText(ssss)
 
 
 
@@ -132,7 +138,7 @@ class Crawdata(QMainWindow):
 class ThreadClass(QtCore.QThread):
     signal = QtCore.pyqtSignal(str)
     siganal = QtCore.pyqtSignal(str)
-
+    tbao = QtCore.pyqtSignal(str)
 
 
     def __init__(self, parent=None ,index = 0):
@@ -152,6 +158,7 @@ class ThreadClass(QtCore.QThread):
         self.infoline = ''
     def setlistlink(self,listlink):
         self.listlink= listlink
+
     def run(self):
         self.signal.emit("Đang craw dữ liệu , vui lòng đợi")
         print("start thread ",self.index)
@@ -159,48 +166,62 @@ class ThreadClass(QtCore.QThread):
         wait = WebDriverWait(browser, 10)
         browser.set_window_size(800,1000)
         def chay(input):
-            time.sleep(2)
+            self.tbao.emit("đang scan follow")
+            time.sleep(1.5)
             try:
                 cl = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[5]/div/div/div[1]/div/div[2]/div/div/div/div[1]/div")
                 cl.click()
-                time.sleep(4)
+                time.sleep(1.5)
             except:
                 pass
             browser.get(self.listlink[i]+input+'about')
-            time.sleep(2)
+            time.sleep(1.5)
             try:
                 cl = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[5]/div/div/div[1]/div/div[2]/div/div/div/div[1]/div")
                 cl.click()
-                time.sleep(3)
+                time.sleep(2)
             except:
                 pass
+            
             try:
-                follows = wait.until(EC.presence_of_element_located((By.XPATH,'/html/body/div[1]/div/div[1]/div/div[3]/div/div/div/div[1]/div[1]/div/div/div[1]/div[2]/div/div/div/div[3]/div/div/div[2]/span/a[2]')))
-                self.follows = follows.text
+                follows = wait.until(EC.presence_of_all_elements_located((By.XPATH,'//a[@class = "x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xt0psk2 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1a2a7pz xt0b8zv xi81zsa x1s688f"]')))
+            # self.follows = follows.text
+                for fl in follows:
+                    if " người theo dõi" in fl.text:
+                        self.follows = fl.text
+                        print(self.follows)
+            except:
+                self.follows = "page khong hien thi follows"
+            self.tbao.emit("đang scan quốc gia")
+            try:
+                browser.get(self.listlink[i]+input+'about_profile_transparency')
             except:
                 pass
-
-            browser.get(self.listlink[i]+input+'about_profile_transparency')
-            time.sleep(2)
+            time.sleep(1.5)
             try:
                 cl = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[5]/div/div/div[1]/div/div[2]/div/div/div/div[1]/div")
                 cl.click()
-                time.sleep(4)
+                time.sleep(1.5)
             except:
                 pass
             browser.execute_script("window.scrollTo(0,500)")
+
+            try:#tim nut xem them
+                semore = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[3]/div/div/div/div[1]/div[1]/div/div/div[4]/div/div/div/div[1]/div/div/div/div/div[2]/div/div/div/div/div[6]/div")
+                semore.click()
+            except:
+                semore = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[3]/div/div/div/div[1]/div[1]/div/div/div[4]/div/div/div/div[1]/div/div/div/div/div[2]/div/div/div/div/div[4]/div/div")
+                semore.click()
             time.sleep(2)
-            semore = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[3]/div/div/div/div[1]/div[1]/div/div/div[4]/div/div/div/div[1]/div/div/div/div/div[2]/div/div/div/div/div[6]/div")
-            semore.click()
-            time.sleep(3)
             try:
                 location = browser.find_elements(By.XPATH,"//div[@class = 'x120dzms x1y1aw1k']")
                 for l in location :
                     sss = l.text
                     self.location.append(sss)
-                # print(self.location)
+                print(self.location)
             except:
-                pass
+                self.tbao.emit("trang web khong public quoc gia")
+            self.tbao.emit("đang scan video")
             browser.get(self.listlink[i]+input+'videos_by')
             time.sleep(2)
             try:
@@ -213,34 +234,42 @@ class ThreadClass(QtCore.QThread):
 
             # Cuộn trang đến cuối
             browser.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-
+            time.sleep(1.5)
             # Lặp lại quá trình cuộn cho đến khi chiều cao trình duyệt không thay đổi
             while True:
                 # Đợi một khoảng thời gian để trang tải nội dung mới (tuỳ chọn)
-                time.sleep(1.5)
+                time.sleep(1)
                 
                 # Lấy chiều cao mới của trình duyệt
                 new_height = browser.execute_script("return document.documentElement.scrollHeight")
-                
+                time.sleep(1)
                 # Kiểm tra xem đã cuộn đến cuối trang hay chưa
                 if new_height == current_height:
                     break
                 # Cập nhật chiều cao hiện tại và tiếp tục cuộn
                 current_height = new_height
                 browser.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-            time.sleep(3)
-            #tim div video
-            videos = browser.find_element(By.XPATH,'//div[@class = "x1qjc9v5 x1lq5wgf xgqcy7u x30kzoy x9jhf4c x78zum5 xdt5ytf x1l90r2v xyamay9 xjl7jj"]')
-            #tim tat ca video
             time.sleep(2)
-            info_vd = videos.find_elements(By.XPATH, './/div[@class = "x9f619 x1r8uery x1iyjqo2 x6ikm8r x10wlt62 x1n2onr6"]')
-            print(f"co {len(info_vd)} video")
-            self.soluongvd = len(info_vd)
-            for inf in info_vd:
-                try:
-                    like = inf.find_element(By.XPATH,".//div[@class = 'x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1n2onr6 x87ps6o x1lku1pv x1a2a7pz x1heor9g x78zum5 x6ikm8r x10wlt62']")
-                    # print(like.text)
-                    self.likevideo.append(like.text)
+            self.tbao.emit("đang scan thong tin ")
+            try:
+                    #tim div video
+                videos = browser.find_element(By.XPATH,'//div[@class = "x1qjc9v5 x1lq5wgf xgqcy7u x30kzoy x9jhf4c x78zum5 xdt5ytf x1l90r2v xyamay9 xjl7jj"]')
+                #tim tat ca video
+                time.sleep(1)
+                #tim tat ca tag video
+                info_vd = videos.find_elements(By.XPATH, './/div[@class = "x9f619 x1r8uery x1iyjqo2 x6ikm8r x10wlt62 x1n2onr6"]')
+                
+                self.soluongvd = len(info_vd)
+                print(f"co {self.soluongvd} video")
+                time.sleep(1)
+                for inf in info_vd:
+                    
+                    try:
+                        like = inf.find_element(By.XPATH,".//div[@class = 'x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1n2onr6 x87ps6o x1lku1pv x1a2a7pz x1heor9g x78zum5 x6ikm8r x10wlt62']")
+                        # print(like.text)
+                        self.likevideo.append(like.text)
+                    except:
+                        self.likevideo.append('0')
                     title = inf.find_element(By.XPATH,".//span[@class = 'x1lliihq x6ikm8r x10wlt62 x1n2onr6']")
                     #tieu de video
                     self.titlevideo.append(title.text)
@@ -250,19 +279,28 @@ class ThreadClass(QtCore.QThread):
                     views = view[1].text
                     # print(views)
                     self.viewvideo.append(views)
+                    # print(views)
                     #tong so viewvideo 
                     self.viewss += convert_views_to_number(views)
                     hreff = inf.find_element(By.XPATH,".//a[@class ='x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xt0psk2 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1a2a7pz x1heor9g xt0b8zv']")
                     link = hreff.get_attribute("href")
                     self.linkvideo.append(link)
-                    tme = inf.find_element(By.XPATH,"span[@class = 'x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x4zkp8e x676frb x1nxh6w3 x1sibtaa xo1l8bm x12scifz x1yc453h']")
+                    tme = inf.find_element(By.XPATH,".//span[@class = 'x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x4zkp8e x676frb x1nxh6w3 x1sibtaa xo1l8bm x12scifz x1yc453h']")
+                    
                     self.timevideo.append(tme.text)
 
-                except:
-                    pass
-        print(' tong co ',str(len(self.listlink)),'link')
+
+            except:
+                self.likevideo.append('none')
+                self.titlevideo.append('none')
+                self.timevideo.append('none')
+                self.viewvideo.append('0')
+                self.linkvideo.append('none')
+                self.timevideo.append('none')
+            self.tbao.emit("đã scan xong")
+        # print(' tong co ',str(len(self.listlink)),'link')
         for i in range(len(self.listlink)):
-            print(self.listlink[i])
+            # print(self.listlink[i])
             with open(str(i)+'.txt',mode='w',encoding='utf8') as f:
                 f.write('')
             if '?id=' not in self.listlink[i]:
@@ -274,8 +312,7 @@ class ThreadClass(QtCore.QThread):
                 except:
                     pass
                 chay('/')
-
-                for o in range(len(self.viewvideo)):
+                for o in range(len(self.linkvideo)):
                     with open(str(i)+'.txt',mode='a',encoding='utf8') as f:
                         f.write(self.linkvideo[o]+'|'+self.titlevideo[o]+'|'+self.likevideo[o]+'|'+self.timevideo[o]+'|'+self.viewvideo[o])
                         f.write('\n')
@@ -285,7 +322,8 @@ class ThreadClass(QtCore.QThread):
                     qg+=a+','
                 # print(qg)
                 
-                self.infoline += self.listlink[i]+'|'+self.follows+'|'+qg+'|'+str(self.soluongvd)+'|'+str(self.viewss)
+                self.infoline += self.listlink[i]+'|'+self.follows+'|'+qg+'|'+str(len(self.linkvideo))+'|'+str(self.viewss)
+                print(self.infoline)
                 self.siganal.emit(self.infoline)
                 self.viewss = 0
                 self.infoline = ''
@@ -294,6 +332,7 @@ class ThreadClass(QtCore.QThread):
                 self.likevideo = []
                 self.linkvideo = []
                 self.timevideo = []
+                
             else:
 
                 try:
@@ -304,7 +343,7 @@ class ThreadClass(QtCore.QThread):
                     pass
                 chay('&sk=')
                 # print(i)
-                for o in range(len(self.viewvideo)):
+                for o in range(len(self.linkvideo)):
                     with open(str(i)+'.txt',mode='a',encoding='utf8') as f:
                         f.write(self.linkvideo[o]+'|'+self.titlevideo[o]+'|'+self.likevideo[o]+'|'+self.timevideo[o]+'|'+self.viewvideo[o])
                         f.write('\n')
@@ -312,9 +351,9 @@ class ThreadClass(QtCore.QThread):
                 for a in self.location:
                     # print(a)
                     qg+=a+','
-                # print(qg)
 
-                self.infoline += self.listlink[i]+'|'+self.follows+'|'+qg+'|'+str(self.soluongvd)+'|'+str(self.viewss)
+                self.infoline += self.listlink[i]+'|'+self.follows+'|'+qg+'|'+str(len(self.linkvideo))+'|'+str(self.viewss)
+                print(self.infoline)
                 self.siganal.emit(self.infoline)
                 self.viewss = 0
                 self.infoline = ''
