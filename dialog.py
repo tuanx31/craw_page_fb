@@ -45,7 +45,7 @@ class Ui_Dialog(object):
         item.setText(_translate("Dialog", "view"))
     def setthuoctinh(self,sss):
         
-        with open(sss+'.txt',mode='r',encoding='utf8') as f:
+        with open(sss+'video.txt',mode='r',encoding='utf8') as f:
             str = f.readlines()
             self.tableWidget.setRowCount(len(str))
             for i in range(len(str)):

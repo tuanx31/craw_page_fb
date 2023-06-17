@@ -25,6 +25,16 @@ def convert_views_to_number(views_str):
     else:
         views = int(views_str)
     return int(views)
+def convert_to_number(string):
+    if 'K' in string:
+        a = string.replace('K', '')
+        a = a.replace(',', '.')  # Thay dấu phẩy bằng dấu chấm
+        number = float(a) * 1000
+    else:
+        a = string.replace(',', '.')  # Thay dấu phẩy bằng dấu chấm
+        number = float(a)
+    return int(number)
+
 ban = 0
 user = "MinhKinh"
 try:
@@ -82,7 +92,9 @@ class Crawdata(QMainWindow):
         reels = Reels()
         self.window = QtWidgets.QDialog()
         reels.setupUi(self.window)
+        reels.setthuoctinh()
         self.window.show()
+
     def setthuoctinh(self,l):
         global solink
         self.tableWidget.setRowCount(solink+1)
@@ -93,7 +105,7 @@ class Crawdata(QMainWindow):
         
         self.tenpage = QLineEdit()
         self.tableWidget.setCellWidget(solink,1,self.tenpage)
-        
+        self.tenpage.setText(lst[5])
 
         self.quocgia = QLineEdit()
         self.tableWidget.setCellWidget(solink,2,self.quocgia)
@@ -122,7 +134,13 @@ class Crawdata(QMainWindow):
         self.xemreels.setText("xem tt reels")
         self.xemreels.clicked.connect(lambda:self.openreels())
 
-        
+        self.soluongreels = QLineEdit()
+        self.tableWidget.setCellWidget(solink,6,self.soluongreels)
+        self.soluongreels.setText(lst[6])
+
+        self.viewreels = QLineEdit()
+        self.tableWidget.setCellWidget(solink,7,self.viewreels)
+        self.viewreels.setText(lst[7])
 
         solink+=1
     def setlist(self):
@@ -140,6 +158,7 @@ class Crawdata(QMainWindow):
             self.thread[1].signal.connect(self.thongbao)
             self.thread[1].siganal.connect(self.setthuoctinh)
             self.thread[1].tbao.connect(self.settbao)
+            self.thread[1].fb.connect(self.setfb)
             self.start.setDisabled(True)
             self.stop.setEnabled(True)
     def thongbao(self,u):
@@ -154,7 +173,8 @@ class Crawdata(QMainWindow):
         event.accept()
     def settbao(self,ssss):
         self.label_3.setText(ssss)
-
+    def setfb(self,ii):
+        self.label_5.setText(ii)
 
 
 
@@ -162,7 +182,7 @@ class ThreadClass(QtCore.QThread):
     signal = QtCore.pyqtSignal(str)
     siganal = QtCore.pyqtSignal(str)
     tbao = QtCore.pyqtSignal(str)
-
+    fb = QtCore.pyqtSignal(str)
 
     def __init__(self, parent=None ,index = 0):
         super(ThreadClass,self).__init__(parent)
@@ -180,6 +200,9 @@ class ThreadClass(QtCore.QThread):
         self.timevideo = []
         self.infoline = ''
         self.tenpage = ''
+        self.linkreels=[]
+        self.viewreels = []
+        self.tongviewreels = 0
     def setlistlink(self,listlink):
         self.listlink= listlink
 
@@ -187,11 +210,101 @@ class ThreadClass(QtCore.QThread):
         self.signal.emit("Đang craw dữ liệu , vui lòng đợi")
         print("start thread ",self.index)
         opstion = webdriver.ChromeOptions()
-        opstion.add_argument('--headless')
+        # opstion.add_argument('--headless')
         browser = webdriver.Chrome(options=opstion)
         wait = WebDriverWait(browser, 10)
         browser.set_window_size(800,1000)
+        
+        def loginfb():
+            self.fb.emit("đang login facebook")
+            browser.get("https://www.facebook.com")
+
+            # Đặt cookie
+
+            with open("cookie.txt","r") as f:
+                a = f.readline()
+                f.close()
+
+            cookie_str = a[:-1]
+            # cookie_str = "sb=-CJ2YzTcmh-ztJmZCRcPqs8w;locale=vi_VN;c_user=100052160731642;wd=1278x951;datr=DemNZAxFXbhsDO3WVGYDzJWN;xs=41%3ATp3gCKSEoLA-aQ%3A2%3A1686639603%3A-1%3A6301%3A%3AAcWW2WsywBQ4VE0p6nNMDmujdpa_HNR4FCVCIZU07w;fr=0rBW8NevxIsZUjZm7.AWWMBolNZgsKltLxolCWP7qFrKo.BkjekQ.wH.AAA.0.0.BkjekQ.AWW1DeWW1cw"
+
+            # Tách chuỗi cookie thành từng cặp key-value
+            cookie_list = cookie_str.split(";")
+
+            # Tạo dictionary lưu trữ các cookie
+            cookies = {}
+            for cookie in cookie_list:
+                key, value = cookie.split("=")
+                cookies[key.strip()] = value.strip()
+
+            # Thiết lập cookie cho trình duyệt
+            for key, value in cookies.items():
+                browser.add_cookie({'name': key, 'value': value})
+
+            # Refresh trang để áp dụng cookie
+            browser.refresh()
+            if "Facebook" in browser.title:
+                print("Đăng nhập thành công!")
+                self.fb.emit("Đăng nhập thành công!")
+            else:
+                print("Đăng nhập thất bại!")
+                self.fb.emit("Đăng nhập thất bại!")
+
+        
+        def getreels(input):
+            self.tbao.emit("đang scan reels")
+            if input == '&sk=':
+                browser.get(self.listlink[i]+input+'reels_tab')
+            if input == '/':
+                browser.get(self.listlink[i]+input+'reels/')
+            current_height = browser.execute_script("return document.documentElement.scrollHeight ")
+
+            # Cuộn trang đến cuối
+            browser.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
+            time.sleep(1.5)
+            # Lặp lại quá trình cuộn cho đến khi chiều cao trình duyệt không thay đổi
+            while True:
+                # Đợi một khoảng thời gian để trang tải nội dung mới (tuỳ chọn)
+                time.sleep(1)
+                
+                # Lấy chiều cao mới của trình duyệt
+                new_height = browser.execute_script("return document.documentElement.scrollHeight")
+                time.sleep(1)
+                # Kiểm tra xem đã cuộn đến cuối trang hay chưa
+                if new_height == current_height:
+                    break
+                # Cập nhật chiều cao hiện tại và tiếp tục cuộn
+                current_height = new_height
+                browser.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
+            time.sleep(2)
+            reel = browser.find_element(By.XPATH,"//div[@class = 'xod5an3']")
+
+            #tab reels
+
+            tabreels = reel.find_elements(By.XPATH,".//div[@class = 'x9f619 x1r8uery x1iyjqo2 x6ikm8r x10wlt62 x1n2onr6']")
+
+            for tab in tabreels:
+                #link reels
+                hreff = tab.find_element(By.XPATH,".//a[@class = 'x1i10hfl x1qjc9v5 xjbqb8w xjqpnuy xa49m3k xqeqjp1 x2hbi6w x13fuv20 xu3j5b3 x1q0q8m5 x26u7qi x972fbf xcfux6l x1qhh985 xm0m39n x9f619 x1ypdohk xdl72j9 x2lah0s xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r x2lwn1j xeuugli xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1ja2u2z x1t137rt x1q0g3np x87ps6o x1lku1pv x1a2a7pz x1lq5wgf xgqcy7u x30kzoy x9jhf4c x1lliihq xqitzto x1n2onr6 xh8yej3']")
+                link = hreff.get_attribute("href")
+                print(link)
+                self.linkreels.append(link)
+                view = tab.find_element(By.XPATH,".//span[@class = 'x1lliihq x6ikm8r x10wlt62 x1n2onr6 xlyipyv xuxw1ft']")
+                print(view.text)
+                self.viewreels.append(view.text)
+                self.tongviewreels+=convert_to_number(view.text)
+
+            
+        def gettenpage():
+            self.tbao.emit("đang scan tên page")
+            try:
+                tenpage = browser.find_element(By.XPATH,"//h1[@class = 'x1heor9g x1qlqyl8 x1pd3egz x1a2a7pz']")
+                self.tenpage = tenpage.text
+            except:
+                pass
         def chay(input):
+            loginfb()
+            
             self.tbao.emit("đang scan follow")
             time.sleep(1.5)
             try:
@@ -208,7 +321,8 @@ class ThreadClass(QtCore.QThread):
                 time.sleep(2)
             except:
                 pass
-            
+            gettenpage()
+            getreels(input)
             try:
                 follows = wait.until(EC.presence_of_all_elements_located((By.XPATH,'//a[@class = "x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xt0psk2 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1a2a7pz xt0b8zv xi81zsa x1s688f"]')))
             # self.follows = follows.text
@@ -236,7 +350,7 @@ class ThreadClass(QtCore.QThread):
                 semore = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[3]/div/div/div/div[1]/div[1]/div/div/div[4]/div/div/div/div[1]/div/div/div/div/div[2]/div/div/div/div/div[6]/div")
                 semore.click()
             except:
-                semore = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[3]/div/div/div/div[1]/div[1]/div/div/div[4]/div/div/div/div[1]/div/div/div/div/div[2]/div/div/div/div/div[4]/div/div")
+                semore = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[5]/div/div/div[3]/div/div/div[1]/div[1]/div/div/div[4]/div/div/div/div[1]/div/div/div/div/div[2]/div/div/div/div/div[4]/div/div/div")
                 semore.click()
             time.sleep(2)
             try:
@@ -302,7 +416,11 @@ class ThreadClass(QtCore.QThread):
                     view = inf.find_elements(By.XPATH,".//div[@class = 'xt0e3qv']")
                     tm = view[0].text
                     self.timevideo.append(tm)    
-                    views = view[1].text
+                    try:
+                        views = view[1].text
+                    except:
+                        views = '0 lượt xem'
+                        print(views)
                     # print(views)
                     self.viewvideo.append(views)
                     # print(views)
@@ -323,12 +441,17 @@ class ThreadClass(QtCore.QThread):
                 self.viewvideo.append('0')
                 self.linkvideo.append('none')
                 self.timevideo.append('none')
+            browser.quit()
             self.tbao.emit("đã scan xong")
         # print(' tong co ',str(len(self.listlink)),'link')
         for i in range(len(self.listlink)):
             # print(self.listlink[i])
-            with open(str(i)+'.txt',mode='w',encoding='utf8') as f:
+            with open(str(i)+'video.txt',mode='w',encoding='utf8') as f:
                 f.write('')
+                f.close()
+            with open(str(i)+'reels.txt',mode='w',encoding='utf8') as f:
+                f.write('')
+                f.close()
             if '?id=' not in self.listlink[i]:
                 try:
                     
@@ -338,17 +461,23 @@ class ThreadClass(QtCore.QThread):
                 except:
                     pass
                 chay('/')
+                for o in range(len(self.linkreels)):
+                    with open(str(i)+'reels.txt',mode='a',encoding='utf8') as f:
+                        f.write(self.linkreels[o]+'|'+str(self.viewreels[o]))
+                        f.write('\n')
+                        f.close()
                 for o in range(len(self.linkvideo)):
-                    with open(str(i)+'.txt',mode='a',encoding='utf8') as f:
+                    with open(str(i)+'video.txt',mode='a',encoding='utf8') as f:
                         f.write(self.linkvideo[o]+'|'+self.titlevideo[o]+'|'+self.likevideo[o]+'|'+self.timevideo[o]+'|'+self.viewvideo[o])
                         f.write('\n')
+                        f.close()
                 qg = ''
                 for a in self.location:
                     # print(a)
                     qg+=a+','
                 # print(qg)
                 
-                self.infoline += self.listlink[i]+'|'+self.follows+'|'+qg+'|'+str(len(self.linkvideo))+'|'+str(self.viewss)
+                self.infoline += self.listlink[i]+'|'+self.follows+'|'+qg+'|'+str(len(self.linkvideo))+'|'+str(self.viewss)+'|'+self.tenpage+'|'+str(len(self.linkreels))+'|'+str(self.tongviewreels)
                 print(self.infoline)
                 self.siganal.emit(self.infoline)
                 self.viewss = 0
@@ -370,16 +499,21 @@ class ThreadClass(QtCore.QThread):
                 chay('&sk=')
                 # print(i)
                 for o in range(len(self.linkvideo)):
-                    with open(str(i)+'.txt',mode='a',encoding='utf8') as f:
+                    with open(str(i)+'video.txt',mode='a',encoding='utf8') as f:
                         f.write(self.linkvideo[o]+'|'+self.titlevideo[o]+'|'+self.likevideo[o]+'|'+self.timevideo[o]+'|'+self.viewvideo[o])
                         f.write('\n')
-                
+                        f.close()
+                for o in range(len(self.linkreels)):
+                    with open(str(i)+'reels.txt',mode='a',encoding='utf8') as f:
+                        f.write(self.linkreels[o]+'|'+str(self.viewreels[o]))
+                        f.write('\n')
+                        f.close()
                 qg = ''
                 for a in self.location:
                     # print(a)
                     qg+=a+','
 
-                self.infoline += self.listlink[i]+'|'+self.follows+'|'+qg+'|'+str(len(self.linkvideo))+'|'+str(self.viewss)
+                self.infoline += self.listlink[i]+'|'+self.follows+'|'+qg+'|'+str(len(self.linkvideo))+'|'+str(self.viewss)+'|'+self.tenpage+str(len(self.linkreels))+'|'+str(self.tongviewreels)
                 print(self.infoline)
                 self.siganal.emit(self.infoline)
                 self.viewss = 0
