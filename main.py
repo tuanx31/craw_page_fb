@@ -11,6 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 from dialog import *
 import MySQLdb
+from reels import Reels
 def convert_views_to_number(views_str):
     views_str = views_str.replace(" lượt xem", "")  # Loại bỏ " lượt xem" từ chuỗi
     if "K" in views_str:
@@ -38,8 +39,8 @@ except:
     pass
 print(ban)
 
-HEIGHT = 526
-WIDTH = 1040
+HEIGHT = 463
+WIDTH = 1400
 
 solink = 0
 
@@ -48,16 +49,19 @@ class Crawdata(QMainWindow):
         
         super(Crawdata,self).__init__()
         uic.loadUi('crawdata.ui',self)
-        self.tableWidget.setColumnWidth(0,350)
-        self.tableWidget.setColumnWidth(1,150)
-        self.tableWidget.setColumnWidth(2,130)
-        self.tableWidget.setColumnWidth(3,130)
-        self.tableWidget.setColumnWidth(4,130)
-        self.tableWidget.setColumnWidth(5,130)
+        self.tableWidget.setColumnWidth(0,250)
+        self.tableWidget.setColumnWidth(1,250)
+        self.tableWidget.setColumnWidth(2,180)
+        self.tableWidget.setColumnWidth(3,80)
+        self.tableWidget.setColumnWidth(4,100)
+        self.tableWidget.setColumnWidth(5,100)
+        self.tableWidget.setColumnWidth(3,100)
+        self.tableWidget.setColumnWidth(4,100)
+        self.tableWidget.setColumnWidth(5,100)        
         self.list_link = []
         self.thread = {}
         self.start.clicked.connect(self.startt)
-        self.stop.clicked.connect(self.stopp)
+        self.stop.clicked.connect(lambda:self.openreels())
         self.current_row = 0
     def opendialog(self):
         button = self.sender()
@@ -72,6 +76,11 @@ class Crawdata(QMainWindow):
         ui.setupUi(self.window)
         self.window.show()  
         ui.setthuoctinh(str(self.current_row))
+    def openreels(self):
+        reels = Reels()
+        self.window = QtWidgets.QDialog()
+        reels.setupUi(self.window)
+        self.window.show()
     def setthuoctinh(self,l):
         global solink
         self.tableWidget.setRowCount(solink+1)
@@ -81,26 +90,31 @@ class Crawdata(QMainWindow):
         self.link.setText(lst[0])
         
         self.quocgia = QLineEdit()
-        self.tableWidget.setCellWidget(solink,1,self.quocgia)
+        self.tableWidget.setCellWidget(solink,3,self.quocgia)
         self.quocgia.setText(lst[2])
 
 
         self.fle = QLineEdit()
-        self.tableWidget.setCellWidget(solink,2,self.fle)
+        self.tableWidget.setCellWidget(solink,4,self.fle)
         self.fle.setText(lst[1])
 
         self.soluong = QLineEdit()
-        self.tableWidget.setCellWidget(solink,3,self.soluong)
+        self.tableWidget.setCellWidget(solink,5,self.soluong)
         self.soluong.setText(lst[3])
 
         self.tongview = QLineEdit()
-        self.tableWidget.setCellWidget(solink,4,self.tongview)
+        self.tableWidget.setCellWidget(solink,6,self.tongview)
         self.tongview.setText(lst[4])
         self.xem = QPushButton()
 
-        self.tableWidget.setCellWidget(solink,5,self.xem)
-        self.xem.setText("xem thông tin vdeo")
+        self.tableWidget.setCellWidget(solink,8,self.xem)
+        self.xem.setText("xem tt vdeo")
         self.xem.clicked.connect(lambda : self.opendialog())
+
+        self.xemreels = QPushButton()
+        self.tableWidget.setCellWidget(solink,9,self.xemreels)
+        self.xemreels.setText("xem tt reels")
+        self.xemreels.clicked.connect(lambda:self.openreels())
         solink+=1
     def setlist(self):
         links = self.textcraw.toPlainText()
@@ -162,7 +176,9 @@ class ThreadClass(QtCore.QThread):
     def run(self):
         self.signal.emit("Đang craw dữ liệu , vui lòng đợi")
         print("start thread ",self.index)
-        browser = webdriver.Chrome()
+        opstion = webdriver.ChromeOptions()
+        # opstion.add_argument('--headless')
+        browser = webdriver.Chrome(options=opstion)
         wait = WebDriverWait(browser, 10)
         browser.set_window_size(800,1000)
         def chay(input):
