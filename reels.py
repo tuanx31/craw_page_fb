@@ -12,9 +12,9 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Reels(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(454, 300)
+        Dialog.resize(470, 300)
         self.tableWidget = QtWidgets.QTableWidget(parent=Dialog)
-        self.tableWidget.setGeometry(QtCore.QRect(0, 0, 450, 301))
+        self.tableWidget.setGeometry(QtCore.QRect(0, 0, 470, 301))
         self.tableWidget.setObjectName("tableWidget")
         self.tableWidget.setColumnCount(2)
         self.tableWidget.setRowCount(0)
@@ -36,7 +36,7 @@ class Reels(object):
         item.setText(_translate("Dialog", "view"))
     def setthuoctinh(self,sss):
         
-        with open(sss+'reels.txt',mode='r',encoding='utf8') as f:
+        with open('crawlreels/'+sss+'reels.txt',mode='r',encoding='utf8') as f:
             str = f.readlines()
             self.tableWidget.setRowCount(len(str))
             for i in range(len(str)):

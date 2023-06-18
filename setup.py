@@ -6,7 +6,7 @@ from cx_Freeze import setup, Executable
 script = r"E:\TOOL\craw data\main.py"
 
 # Các thư viện được sử dụng trong chương trình
-includes = ["PyQt6","sys","selenium","time","MySQLdb"]
+includes = ["PyQt6","sys","selenium","time","MySQLdb","os"]
 
 
 # Cấu hình cho cx_Freeze
