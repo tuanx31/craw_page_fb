@@ -3,13 +3,42 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
 # Khởi tạo trình duyệt Chrome
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
 
+def scroll_to_bottom(driver):
+    # Lấy chiều cao ban đầu của trang
+    current_height = driver.execute_script("return document.documentElement.scrollHeight")
+
+    while True:
+        # Cuộn trang đến cuối
+        driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
+
+        # Sử dụng explicit wait để chờ cho sự kiện tải dữ liệu hoàn thành
+        try:
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//footer")))
+        except:
+            break
+
+        # Lấy chiều cao mới của trang
+        new_height = driver.execute_script("return document.documentElement.scrollHeight")
+
+        # Kiểm tra xem đã cuộn đến cuối trang hay chưa
+        if new_height == current_height:
+            break
+
+        # Cập nhật chiều cao hiện tại
+        current_height = new_height
 
 chrome_options = webdriver.ChromeOptions()
-chrome_options.add_argument('--headless')
+# chrome_options.add_argument('--headless')
+chrome_options.add_argument("--disable-notifications")
 
 browser = webdriver.Chrome(options=chrome_options)
-browser.set_window_size(2000,4000)
+# browser.set_window_size(2000,4000)
 # Truy cập vào trang đăng nhập Facebook
 browser.get("https://www.facebook.com")
 
@@ -46,6 +75,13 @@ else:
     print("Đăng nhập thất bại!")
 
 browser.get("https://www.facebook.com/profile.php?id=100090960481247&sk=reels_tab")
+
+
+
+scroll_to_bottom(browser)
+
+print("da thoat vong lap")
+time.sleep(5)
 
 l  = []
 v = []

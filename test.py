@@ -77,6 +77,8 @@ class crawldata(QMainWindow):
         self.thread = {}
         self.start.clicked.connect(self.startt)
         self.stop.clicked.connect(self.stopp)
+        self.resett.clicked.connect(self.reset)
+        self.stop.setDisabled(True)
         self.current_row = 0
         self.dem = 1
         self.tableWidget.horizontalHeader().setStyleSheet("""
@@ -93,7 +95,11 @@ class crawldata(QMainWindow):
         background-color: rgb(43, 43, 43);
         color: white;
     }
+
 """)
+        with open("cauhinh.txt",mode="r",encoding="utf8") as f:
+            self.textcrawl.setText(f.read())
+            f.close()
     def opendialog(self):
         button = self.sender()
         for row in range(self.tableWidget.rowCount()):
@@ -188,12 +194,22 @@ class crawldata(QMainWindow):
             self.thread[1].fb.connect(self.setfb)
             self.start.setDisabled(True)
             self.stop.setEnabled(True)
+            self.resett.setEnabled(True)
+
     def thongbao(self,u):
         self.label_2.setText(u)
     def stopp(self):
         self.thread[1].stop()
         self.start.setEnabled(True)
         self.stop.setDisabled(True)
+    def reset(self):
+        with open ("cauhinh.txt",mode='w',encoding='utf8') as f:
+            f.write(self.textcrawl.toPlainText())
+            f.close()
+        ss = QMessageBox()
+        ss.setStyleSheet("QMessageBox :: {background-color: white }")
+        # QMessageBox.setStyleSheet("QMessageBox { color: white; }")
+        ss.information(self,"thông báo","đã lưu cấu hình ")
     def closeEvent(self, event):
         # Gửi tín hiệu yêu cầu kết thúc luồng
         self.thread[1].stop()
@@ -202,7 +218,6 @@ class crawldata(QMainWindow):
         self.label_3.setText(ssss)
     def setfb(self,ii):
         self.label_5.setText(ii)
-
 
 
 class ThreadClass(QtCore.QThread):
@@ -244,12 +259,14 @@ class ThreadClass(QtCore.QThread):
         # chrome_options.add_argument("--disable-gpu")  # Tắt GPU
         chrome_options.add_argument("--no-sandbox") 
         chrome_options.add_argument('--headless')
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--disable-javascript")
         current_dir = os.path.dirname(os.path.abspath(__file__))
         cache_dir = os.path.join(current_dir, "dulieu")
         chrome_options.add_argument(f"--user-data-dir={cache_dir}")
         browser = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(browser, 10)
-        browser.set_window_size(2000,4000)
+        # browser.set_window_size(2000,4000)
         def loginfb():
             self.fb.emit("đang login facebook")
             browser.get("https://www.facebook.com")
@@ -278,12 +295,20 @@ class ThreadClass(QtCore.QThread):
 
             # Refresh trang để áp dụng cookie
             browser.refresh()
-            if "Facebook" in browser.title:
-                print("Đăng nhập thành công!")
-                self.fb.emit("Đăng nhập thành công!")
+            if "Đăng nhập" in browser.title:
+                print("Đăng nhập không thành công.")
+            
+                self.fb.emit("Đăng nhập thất bại!, kiểm tra lại cookie")
+                time.sleep(1000)
             else:
-                print("Đăng nhập thất bại!")
-                self.fb.emit("Đăng nhập thất bại!")
+                print("Đăng nhập thành công.")
+                self.fb.emit("Đăng nhập thành công!")
+            # if "Facebook" in browser.title:
+            #     print("Đăng nhập thành công!")
+                
+            # else:
+            #     print("Đăng nhập thất bại!")
+            
 
         def getvideos(input):
             self.tbao.emit("đang crawl video")
@@ -374,17 +399,17 @@ class ThreadClass(QtCore.QThread):
             # Lặp lại quá trình cuộn cho đến khi chiều cao trình duyệt không thay đổi
             while True:
                 # Đợi một khoảng thời gian để trang tải nội dung mới (tuỳ chọn)
-                time.sleep(4)                
+                time.sleep(6)                
                 # Lấy chiều cao mới của trình duyệt
                 new_height = browser.execute_script("return document.documentElement.scrollHeight")
-                time.sleep(1.5)
+                time.sleep(1)
                 # Kiểm tra xem đã cuộn đến cuối trang hay chưa
                 if new_height == current_height:
                     break
                 # Cập nhật chiều cao hiện tại và tiếp tục cuộn
                 current_height = new_height
                 browser.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-            time.sleep(1)
+            time.sleep(5)
             try:
                 reel = browser.find_element(By.XPATH,"//div[@class = 'xod5an3']")
 
@@ -477,13 +502,7 @@ class ThreadClass(QtCore.QThread):
             getfollows(input)            
             gettenpage()
             getquocgia(input)
-            # self.likevideo.append('none')
-            # self.titlevideo.append('none')
-            # self.timevideo.append('none')
             self.viewvideo.append('0')
-            # self.linkvideo.append('none')
-            # self.timevideo.append('none')
-            # self.linkreels.append('none')
             self.tbao.emit("đã crawl xong")
         def chiquetvideo(input):
             getfollows(input)            
@@ -517,6 +536,7 @@ class ThreadClass(QtCore.QThread):
                 tabreels = reel.find_elements(By.XPATH,".//div[@class = 'x9f619 x1r8uery x1iyjqo2 x6ikm8r x10wlt62 x1n2onr6']")
                 self.tongreels = len(tabreels)
                 print(len(tabreels))
+                e = 0
                 for tab in tabreels:
                     #link reels
                     hreff = tab.find_element(By.XPATH,".//a[@class = 'x1i10hfl x1qjc9v5 xjbqb8w xjqpnuy xa49m3k xqeqjp1 x2hbi6w x13fuv20 xu3j5b3 x1q0q8m5 x26u7qi x972fbf xcfux6l x1qhh985 xm0m39n x9f619 x1ypdohk xdl72j9 x2lah0s xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r x2lwn1j xeuugli xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1ja2u2z x1t137rt x1q0g3np x87ps6o x1lku1pv x1a2a7pz x1lq5wgf xgqcy7u x30kzoy x9jhf4c x1lliihq xqitzto x1n2onr6 xh8yej3']")
@@ -527,8 +547,66 @@ class ThreadClass(QtCore.QThread):
                     # print(view.text)
                     self.viewreels.append(view.text)
                     self.tongviewreels+=convert_to_number(view.text)
+                    e+=1
+                    if e ==10:
+                        break
             except:
                 self.linkreels.append('none')
+            
+            ####################################################
+            self.tbao.emit("đang crawl video")
+            browser.get(self.listlink[i]+input+'videos_by')
+            time.sleep(2)
+            browser.execute_script("window.scrollTo(0,20000)")
+            self.tbao.emit("đang crawl thong tin ")
+            try:
+                    #tim div video
+                videos = browser.find_element(By.XPATH,'//div[@class = "x1qjc9v5 x1lq5wgf xgqcy7u x30kzoy x9jhf4c x78zum5 xdt5ytf x1l90r2v xyamay9 xjl7jj"]')
+                #tim tat ca video
+                time.sleep(1)
+                #tim tat ca tag video
+                info_vd = videos.find_elements(By.XPATH, './/div[@class = "x9f619 x1r8uery x1iyjqo2 x6ikm8r x10wlt62 x1n2onr6"]')
+                
+                self.soluongvd = len(info_vd)
+                print(f"co {self.soluongvd} video")
+                w = 0
+                for inf in info_vd:                    
+                    try:
+                        like = inf.find_element(By.XPATH,".//div[@class = 'x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1n2onr6 x87ps6o x1lku1pv x1a2a7pz x1heor9g x78zum5 x6ikm8r x10wlt62']")
+                        # print(like.text)
+                        self.likevideo.append(like.text)
+                    except:
+                        self.likevideo.append('0')
+                    title = inf.find_element(By.XPATH,".//span[@class = 'x1lliihq x6ikm8r x10wlt62 x1n2onr6']")
+                    #tieu de video
+                    self.titlevideo.append(title.text)
+                    view = inf.find_elements(By.XPATH,".//div[@class = 'xt0e3qv']")
+                    tm = view[0].text
+                    self.timevideo.append(tm)    
+                    try:
+                        views = view[1].text
+                    except:
+                        views = '0 lượt xem'
+                        print(views)
+                    # print(views)
+                    self.viewvideo.append(views)
+                    self.viewss += convert_views_to_number(views)
+                    hreff = inf.find_element(By.XPATH,".//a[@class ='x1i10hfl xjbqb8w x6umtig x1b1mbwd xaqea5y xav7gou x9f619 x1ypdohk xt0psk2 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1a2a7pz x1heor9g xt0b8zv']")
+                    link = hreff.get_attribute("href")
+                    self.linkvideo.append(link)
+                    tme = inf.find_element(By.XPATH,".//span[@class = 'x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x4zkp8e x676frb x1nxh6w3 x1sibtaa xo1l8bm x12scifz x1yc453h']")
+                    
+                    self.timevideo.append(tme.text)
+                    w+=1
+                    if w == 10:
+                        break
+            except:
+                # self.likevideo.append('none')
+                # self.titlevideo.append('none')
+                # self.timevideo.append('none')
+                self.viewvideo.append('0')
+                # self.linkvideo.append('none')
+            self.tbao.emit("đã crawl xong")
 
 
         def ghifile():

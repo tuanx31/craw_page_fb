@@ -26,7 +26,28 @@ class Reels(object):
         self.tableWidget.setColumnWidth(1,120)
         self.retranslateUi(Dialog)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
+        self.tableWidget.horizontalHeader().setStyleSheet("""
+    QHeaderView::section {
+        background-color: rgb(43, 43, 43);
+        color: white;
+    }
+""")
+        vertical_header = self.tableWidget.verticalHeader()
 
+# Tùy chỉnh giao diện của header của cột dọc
+        vertical_header.setStyleSheet("""
+    QHeaderView::section {
+        background-color: rgb(43, 43, 43);
+        color: white;
+    };background-color: rgb(43, 43, 43);
+        color: white;
+""")
+        self.tableWidget.setStyleSheet("background-color:rgb(43, 43, 43);color:rgb(255, 255, 255);\n"
+"    QHeaderView::section {\n"
+"        background-color: rgb(43, 43, 43);\n"
+"        color: white;\n"
+"    }\n"
+"")
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "Dialog"))

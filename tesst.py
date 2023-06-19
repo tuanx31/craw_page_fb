@@ -1,22 +1,13 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QTableWidget
+from PyQt6.QtWidgets import QApplication, QMessageBox
 
 app = QApplication([])
-window = QMainWindow()
 
-table_widget = QTableWidget(4, 3)  # Tạo QTableWidget có 4 hàng và 3 cột
+# Tạo một instance của QMessageBox
+message_box = QMessageBox()
+message_box.setText("Hello World!")
 
-# Truy cập vào header của cột dọc
-vertical_header = table_widget.verticalHeader()
+# Áp dụng CSS để thay đổi màu văn bản
+message_box.setStyleSheet("QMessageBox :: {background-color: white }")
 
-# Tùy chỉnh giao diện của header của cột dọc
-vertical_header.setStyleSheet("""
-    QHeaderView::section {
-        background-color: rgb(43, 43, 43);
-        color: white;
-    }
-""")
-
-window.setCentralWidget(table_widget)
-window.show()
-
-app.exec()
+# Hiển thị QMessageBox
+message_box.exec()
