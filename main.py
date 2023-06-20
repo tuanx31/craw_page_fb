@@ -1,6 +1,7 @@
+import typing
 from PyQt6.QtCore import QObject
 from PyQt6 import QtCore , QtGui,QtWidgets,uic
-from PyQt6.QtWidgets import QApplication , QMainWindow,QLineEdit,QPushButton,QMessageBox
+from PyQt6.QtWidgets import QApplication,QVBoxLayout,QTableWidget , QMainWindow,QLineEdit,QPushButton,QMessageBox, QWidget,QTableWidgetItem,QDialog
 from PyQt6.uic import loadUi
 from PyQt6.QtGui import QIcon
 import sys
@@ -13,6 +14,23 @@ import time
 from dialog import *
 import MySQLdb
 from reels import Reels
+from PyQt6.QtCore import QFile
+# from cauhinh import Cauhinh
+
+from urllib.parse import urlparse, parse_qs
+
+
+def xulylink(url):
+    parsed_url = urlparse(url)
+    query_params = parse_qs(parsed_url.query)
+
+    if "id" in query_params:
+        modified_url = url  # Giữ nguyên URL nếu phần sau chứa chữ "id"
+    else:
+        modified_url = parsed_url.scheme + "://" + parsed_url.netloc + parsed_url.path
+    return modified_url
+
+
 def get_smallest_number(a, b):
     smallest = min(a, b)
     return a if smallest == a else b
@@ -51,16 +69,83 @@ try:
     ban = kt[1]
 except:
     pass
+
 print(ban)
 
 HEIGHT = 463
 WIDTH = 1500
 
 solink = 0
+# from cauhinh import Cauhinh
+class Cauhinh(object):
+    def setupUi(self, Dialog):
+        Dialog.setObjectName("Dialog")
+        Dialog.resize(155, 218)
+        self.tableWidget = QtWidgets.QTableWidget(parent=Dialog)
+        self.tableWidget.setGeometry(QtCore.QRect(0, 0, 191, 211))
+        self.tableWidget.setStyleSheet("background-color:rgb(43, 43, 43);color:rgb(255, 255, 255);\n"
+"    QHeaderView::section {\n"
+"        background-color: rgb(43, 43, 43);\n"
+"        color: white;\n"
+"    }\n"
+"")
+        self.tableWidget.setObjectName("tableWidget")
+        self.tableWidget.setColumnCount(1)
+        self.tableWidget.setRowCount(0)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setHorizontalHeaderItem(0, item)
+
+        self.retranslateUi(Dialog)
+        QtCore.QMetaObject.connectSlotsByName(Dialog)
+        self.tableWidget.horizontalHeader().setStyleSheet("""
+    QHeaderView::section {
+        background-color: rgb(43, 43, 43);
+        color: white;
+    }
+""")
+        vertical_header = self.tableWidget.verticalHeader()
+
+        # Tùy chỉnh giao diện của header của cột dọc
+        vertical_header.setStyleSheet("""
+    QHeaderView::section {
+        background-color: rgb(43, 43, 43);
+        color: white;
+    };background-color: rgb(43, 43, 43);
+        color: white;
+""")
+        self.tableWidget.setColumnWidth(0, 150)
+        self.list_files = []
+
+    def retranslateUi(self, Dialog):
+        _translate = QtCore.QCoreApplication.translate
+        Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
+        item = self.tableWidget.horizontalHeaderItem(0)
+        item.setText(_translate("Dialog", "chọn cấu hình"))
+        self.setthuoctinh()
+
+    def setthuoctinh(self):
+        allfiles = os.listdir('cauhinh')
+        self.list_files = [fname for fname in allfiles if fname.endswith('.txt')]
+        row = len(self.list_files)
+        print(row)
+        self.tableWidget.setRowCount(row)
+        
+        def handleButtonClick(row):
+            print(f"Button clicked in row: {row}")
+            caw.textcrawl.setText("")
+            caw.loadcauhinh(str(row))
+            caw.tableWidget.setRowCount(0)
+            global solink
+            solink = 0
+        for i in range(row):
+            self.chon = QPushButton()
+            self.tableWidget.setCellWidget(i, 0, self.chon)
+            self.chon.setText(self.list_files[i])
+            self.chon.clicked.connect(lambda _, row=i: handleButtonClick(row))
+
 
 class crawldata(QMainWindow):
     def __init__(self):
-        
         super(crawldata,self).__init__()
         uic.loadUi('crawldata.ui',self)
         self.tableWidget.setColumnWidth(0,230)
@@ -77,10 +162,12 @@ class crawldata(QMainWindow):
         self.thread = {}
         self.start.clicked.connect(self.startt)
         self.stop.clicked.connect(self.stopp)
-        self.resett.clicked.connect(self.reset)
+        self.resett.clicked.connect(self.save_configuration)
         self.stop.setDisabled(True)
         self.current_row = 0
         self.dem = 1
+        self.comboBox.currentIndexChanged.connect(self.thaydoigiatricombobox)
+        self.pushButton.clicked.connect(lambda:self.opencauhinh())
         self.tableWidget.horizontalHeader().setStyleSheet("""
     QHeaderView::section {
         background-color: rgb(43, 43, 43);
@@ -95,11 +182,16 @@ class crawldata(QMainWindow):
         background-color: rgb(43, 43, 43);
         color: white;
     }
-
 """)
-        with open("cauhinh.txt",mode="r",encoding="utf8") as f:
-            self.textcrawl.setText(f.read())
-            f.close()
+    def thaydoigiatricombobox(self):
+        self.tableWidget.setRowCount(0)
+        global solink
+        solink = 0
+    def opencauhinh(self):
+        Cauhinhh = Cauhinh()
+        self.window = QtWidgets.QDialog()
+        Cauhinhh.setupUi(self.window)
+        self.window.show()
     def opendialog(self):
         button = self.sender()
         for row in range(self.tableWidget.rowCount()):
@@ -127,7 +219,23 @@ class crawldata(QMainWindow):
         reels.setupUi(self.window)
         reels.setthuoctinh(str(self.current_row))
         self.window.show()
-
+    def save_configuration(self):
+        config_text = self.textcrawl.toPlainText()
+        filename = f"cauhinh/cauhinh{self.get_configuration_count()}.txt"
+        with open(filename, "w",encoding='utf8') as file:
+            file.write(config_text)
+        QMessageBox.information(self,"thông báo","đã lưu cấu hình ")
+    def get_configuration_count(self):
+        count = 0
+        while True:
+            filename = f"cauhinh/cauhinh{count}.txt"
+            if not QFile.exists(filename):
+                break
+            count += 1
+        return count
+    def loadcauhinh(self,sss):
+        with open('cauhinh/'+'cauhinh'+sss+'.txt',mode='r',encoding='utf8') as f:
+            self.textcrawl.setText(f.read())
     def setthuoctinh(self,l):
         global solink
         self.tableWidget.setRowCount(solink+1)
@@ -183,8 +291,9 @@ class crawldata(QMainWindow):
             QMessageBox.information(self,"thong bao ", "bạn đã bị ban ")
         else:
             selected_item = self.comboBox.currentText()
+            input = self.input.currentText()
             self.setlist()
-            thr = ThreadClass(selected_item,parent=None,index=1)
+            thr = ThreadClass(selected_item,input,parent=None,index=1)
             thr.setlistlink(self.list_link)
             self.thread[1]= thr
             self.thread[1].start()
@@ -202,14 +311,6 @@ class crawldata(QMainWindow):
         self.thread[1].stop()
         self.start.setEnabled(True)
         self.stop.setDisabled(True)
-    def reset(self):
-        with open ("cauhinh.txt",mode='w',encoding='utf8') as f:
-            f.write(self.textcrawl.toPlainText())
-            f.close()
-        ss = QMessageBox()
-        ss.setStyleSheet("QMessageBox :: {background-color: white }")
-        # QMessageBox.setStyleSheet("QMessageBox { color: white; }")
-        ss.information(self,"thông báo","đã lưu cấu hình ")
     def closeEvent(self, event):
         # Gửi tín hiệu yêu cầu kết thúc luồng
         self.thread[1].stop()
@@ -226,7 +327,7 @@ class ThreadClass(QtCore.QThread):
     tbao = QtCore.pyqtSignal(str)
     fb = QtCore.pyqtSignal(str)
 
-    def __init__(self,selectitem, parent=None ,index = 0):
+    def __init__(self,selectitem,input, parent=None ,index = 0):
         super(ThreadClass,self).__init__(parent)
         self.listlink = []
         self.index = index
@@ -247,6 +348,8 @@ class ThreadClass(QtCore.QThread):
         self.tongviewreels = 0
         self.tongreels = 0
         self.select_item = selectitem
+        self.input = input
+        self.i = 0
     def setlistlink(self,listlink):
         self.listlink= listlink
 
@@ -261,40 +364,41 @@ class ThreadClass(QtCore.QThread):
         chrome_options.add_argument('--headless')
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--disable-javascript")
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        cache_dir = os.path.join(current_dir, "dulieu")
-        chrome_options.add_argument(f"--user-data-dir={cache_dir}")
+        # current_dir = os.path.dirname(os.path.abspath(__file__))
+        # cache_dir = os.path.join(current_dir, "dulieu")
+        # chrome_options.add_argument(f"--user-data-dir={cache_dir}")
         browser = webdriver.Chrome(options=chrome_options)
         wait = WebDriverWait(browser, 10)
         # browser.set_window_size(2000,4000)
         def loginfb():
-            self.fb.emit("đang login facebook")
             browser.get("https://www.facebook.com")
+            if "Đăng nhập" in browser.title:
+                self.fb.emit("đang login facebook")
+                
+                # Đặt cookie
 
-            # Đặt cookie
+                with open("cookie.txt","r") as f:
+                    a = f.readline()
+                    f.close()
 
-            with open("cookie.txt","r") as f:
-                a = f.readline()
-                f.close()
+                cookie_str = a[:-1]
+                # cookie_str = "sb=-CJ2YzTcmh-ztJmZCRcPqs8w;locale=vi_VN;c_user=100052160731642;wd=1278x951;datr=DemNZAxFXbhsDO3WVGYDzJWN;xs=41%3ATp3gCKSEoLA-aQ%3A2%3A1686639603%3A-1%3A6301%3A%3AAcWW2WsywBQ4VE0p6nNMDmujdpa_HNR4FCVCIZU07w;fr=0rBW8NevxIsZUjZm7.AWWMBolNZgsKltLxolCWP7qFrKo.BkjekQ.wH.AAA.0.0.BkjekQ.AWW1DeWW1cw"
 
-            cookie_str = a[:-1]
-            # cookie_str = "sb=-CJ2YzTcmh-ztJmZCRcPqs8w;locale=vi_VN;c_user=100052160731642;wd=1278x951;datr=DemNZAxFXbhsDO3WVGYDzJWN;xs=41%3ATp3gCKSEoLA-aQ%3A2%3A1686639603%3A-1%3A6301%3A%3AAcWW2WsywBQ4VE0p6nNMDmujdpa_HNR4FCVCIZU07w;fr=0rBW8NevxIsZUjZm7.AWWMBolNZgsKltLxolCWP7qFrKo.BkjekQ.wH.AAA.0.0.BkjekQ.AWW1DeWW1cw"
+                # Tách chuỗi cookie thành từng cặp key-value
+                cookie_list = cookie_str.split(";")
 
-            # Tách chuỗi cookie thành từng cặp key-value
-            cookie_list = cookie_str.split(";")
+                # Tạo dictionary lưu trữ các cookie
+                cookies = {}
+                for cookie in cookie_list:
+                    key, value = cookie.split("=")
+                    cookies[key.strip()] = value.strip()
 
-            # Tạo dictionary lưu trữ các cookie
-            cookies = {}
-            for cookie in cookie_list:
-                key, value = cookie.split("=")
-                cookies[key.strip()] = value.strip()
+                # Thiết lập cookie cho trình duyệt
+                for key, value in cookies.items():
+                    browser.add_cookie({'name': key, 'value': value})
 
-            # Thiết lập cookie cho trình duyệt
-            for key, value in cookies.items():
-                browser.add_cookie({'name': key, 'value': value})
-
-            # Refresh trang để áp dụng cookie
-            browser.refresh()
+                # Refresh trang để áp dụng cookie
+                browser.refresh()
             if "Đăng nhập" in browser.title:
                 print("Đăng nhập không thành công.")
             
@@ -303,12 +407,6 @@ class ThreadClass(QtCore.QThread):
             else:
                 print("Đăng nhập thành công.")
                 self.fb.emit("Đăng nhập thành công!")
-            # if "Facebook" in browser.title:
-            #     print("Đăng nhập thành công!")
-                
-            # else:
-            #     print("Đăng nhập thất bại!")
-            
 
         def getvideos(input):
             self.tbao.emit("đang crawl video")
@@ -331,20 +429,19 @@ class ThreadClass(QtCore.QThread):
                 time.sleep(2)
                 # Lấy chiều cao mới của trình duyệt
                 new_height = browser.execute_script("return document.documentElement.scrollHeight")
-                time.sleep(1.5)
+                time.sleep(2)
                 # Kiểm tra xem đã cuộn đến cuối trang hay chưa
                 if new_height == current_height:
                     break
                 # Cập nhật chiều cao hiện tại và tiếp tục cuộn
                 current_height = new_height
                 browser.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-            time.sleep(2)
-            self.tbao.emit("đang crawl thong tin ")
+            time.sleep(1.5)
+            self.tbao.emit("đang crawl thong tin video")
             try:
                     #tim div video
                 videos = browser.find_element(By.XPATH,'//div[@class = "x1qjc9v5 x1lq5wgf xgqcy7u x30kzoy x9jhf4c x78zum5 xdt5ytf x1l90r2v xyamay9 xjl7jj"]')
                 #tim tat ca video
-                time.sleep(1)
                 #tim tat ca tag video
                 info_vd = videos.find_elements(By.XPATH, './/div[@class = "x9f619 x1r8uery x1iyjqo2 x6ikm8r x10wlt62 x1n2onr6"]')
                 
@@ -367,7 +464,8 @@ class ThreadClass(QtCore.QThread):
                         views = view[1].text
                     except:
                         views = '0 lượt xem'
-                        print(views)
+                        # print(views)
+
                     # print(views)
                     self.viewvideo.append(views)
                     self.viewss += convert_views_to_number(views)
@@ -377,7 +475,6 @@ class ThreadClass(QtCore.QThread):
                     tme = inf.find_element(By.XPATH,".//span[@class = 'x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x4zkp8e x676frb x1nxh6w3 x1sibtaa xo1l8bm x12scifz x1yc453h']")
                     
                     self.timevideo.append(tme.text)
-
 
             except:
                 # self.likevideo.append('none')
@@ -389,32 +486,30 @@ class ThreadClass(QtCore.QThread):
             self.tbao.emit("đang crawl reels")
             if input == '&sk=':
                 browser.get(self.listlink[i]+input+'reels_tab')
-
             if input == '/':
                 browser.get(self.listlink[i]+input+'reels/')
             current_height = browser.execute_script("return document.documentElement.scrollHeight ")
             # Cuộn trang đến cuối
             browser.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-            time.sleep(2)
+            time.sleep(3)
             # Lặp lại quá trình cuộn cho đến khi chiều cao trình duyệt không thay đổi
             while True:
                 # Đợi một khoảng thời gian để trang tải nội dung mới (tuỳ chọn)
-                time.sleep(6)                
+                time.sleep(5)                
                 # Lấy chiều cao mới của trình duyệt
                 new_height = browser.execute_script("return document.documentElement.scrollHeight")
-                time.sleep(1)
+                time.sleep(2)
                 # Kiểm tra xem đã cuộn đến cuối trang hay chưa
                 if new_height == current_height:
                     break
                 # Cập nhật chiều cao hiện tại và tiếp tục cuộn
                 current_height = new_height
                 browser.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-            time.sleep(5)
+            time.sleep(3)
             try:
                 reel = browser.find_element(By.XPATH,"//div[@class = 'xod5an3']")
 
                 #tab reels
-
                 tabreels = reel.find_elements(By.XPATH,".//div[@class = 'x9f619 x1r8uery x1iyjqo2 x6ikm8r x10wlt62 x1n2onr6']")
                 self.tongreels = len(tabreels)
                 # print(self.tongreels)
@@ -447,11 +542,11 @@ class ThreadClass(QtCore.QThread):
             except:
                 pass
             browser.get(self.listlink[i]+input+'about')
-            time.sleep(1.5)
+            time.sleep(1.25)
             try:
                 cl = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[5]/div/div/div[1]/div/div[2]/div/div/div/div[1]/div")
                 cl.click()
-                time.sleep(1.5)
+                time.sleep(1.25)
             except:
                 pass
             
@@ -461,7 +556,7 @@ class ThreadClass(QtCore.QThread):
                 for fl in follows:
                     if " người theo dõi" in fl.text:
                         self.follows = fl.text
-                        print(self.follows)
+                        # print(self.follows)
             except:
                 self.follows = "page khong hien thi follows"
         def getquocgia(input):
@@ -479,18 +574,20 @@ class ThreadClass(QtCore.QThread):
                 pass
             # browser.execute_script("window.scrollTo(0,500)")
 
-
-            semore = browser.find_element(By.XPATH,"//div[@aria-label='See All']")
-            semore.click()
-            time.sleep(2)
             try:
-                location = browser.find_elements(By.XPATH,"//div[@class = 'x120dzms x1y1aw1k']")
-                for l in location :
-                    sss = l.text
-                    self.location.append(sss)
-                print(self.location)
+                semore = browser.find_element(By.XPATH,"//div[@aria-label='See All']")
+                semore.click()
+                time.sleep(2)
+                try:
+                    location = browser.find_elements(By.XPATH,"//div[@class = 'x120dzms x1y1aw1k']")
+                    for l in location :
+                        sss = l.text
+                        self.location.append(sss)
+                    print(self.location)
+                except:
+                    self.tbao.emit("trang web khong public quoc gia")
             except:
-                self.tbao.emit("trang web khong public quoc gia")
+                pass
         def chay(input):            
             getfollows(input)            
             gettenpage()
@@ -587,7 +684,8 @@ class ThreadClass(QtCore.QThread):
                         views = view[1].text
                     except:
                         views = '0 lượt xem'
-                        print(views)
+                        # print(views)
+                        
                     # print(views)
                     self.viewvideo.append(views)
                     self.viewss += convert_views_to_number(views)
@@ -607,8 +705,8 @@ class ThreadClass(QtCore.QThread):
                 self.viewvideo.append('0')
                 # self.linkvideo.append('none')
             self.tbao.emit("đã crawl xong")
-
-
+            # try:
+   
         def ghifile():
             for o in range(get_smallest_number(len(self.linkreels),len(self.viewreels))):
                     with open("crawlreels/"+str(i)+'reels.txt',mode='a',encoding='utf8') as f:
@@ -649,51 +747,84 @@ class ThreadClass(QtCore.QThread):
         loginfb()
         for i in range(len(self.listlink)):
             # print(self.listlink[i])
+            
+
+
             with open("crawlvideo/"+str(i)+'video.txt',mode='w',encoding='utf8') as f:
                 f.write('')
                 f.close()
             with open("crawlreels/"+str(i)+'reels.txt',mode='w',encoding='utf8') as f:
                 f.write('')
                 f.close()
-            if '?id=' not in self.listlink[i]:
-                try:                    
-                    a = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[5]/div/div/div[1]/div/div[2]/div/div/div/div[1]/div")
-                    a.click()
+            
+            if self.listlink[i]=="":
+                pass
+            elif self.input == 'UID':
+                browser.get("https://www.facebook.com/"+str(self.listlink[i]))
+                self.listlink[i]= browser.current_url
+                if '?id=' not in browser.current_url:
 
-                except:
-                    pass
-                if self.select_item == 'quét full page':
-                    chay('/')
-                elif self.select_item == 'chỉ quét follow':
-                    chifollows('/')
-                elif self.select_item == 'chỉ quét video':
-                    chiquetvideo('/')
-                elif self.select_item =='chỉ quét reels':
-                    chiquetreels('/')
-                elif self.select_item == 'quét 10 video/reels gần nhất':
-                    quet10('/')
-                ghifile()
-                
-            else:
+                    print('id')
+                    print(self.listlink[i])
+                    if self.select_item == 'quét full page':
+                        chay('')
+                    elif self.select_item == 'chỉ quét follow':
+                        chifollows('')
+                    elif self.select_item == 'chỉ quét video':
+                        chiquetvideo('')
+                    elif self.select_item =='chỉ quét reels':
+                        chiquetreels('')
+                    elif self.select_item == 'quét 10 video/reels gần nhất':
+                        quet10('')
+                    ghifile()                
+                else:
+                    print(self.listlink[i])
+                    if self.select_item == 'quét full page':
+                        chay('&sk=')
+                    elif self.select_item == 'chỉ quét follow':
+                        chifollows('&sk=')
+                    elif self.select_item == 'chỉ quét video':
+                        chiquetvideo('&sk=')
+                    elif self.select_item =='chỉ quét reels':
+                        chiquetreels('&sk=')
+                    elif self.select_item == 'quét 10 video/reels gần nhất':
+                        quet10('&sk=')
+                    ghifile()
+            elif self.input == "Link":
+                print(self.input)
+                self.listlink[i] = xulylink(self.listlink[i])
+                if '?id=' not in self.listlink[i]:
+                    # linkchinhxac(self.listlink[i])
+                    print(self.listlink[i])
+                    if self.select_item == 'quét full page':
+                        chay('/')
+                    elif self.select_item == 'chỉ quét follow':
+                        chifollows('/')
+                    elif self.select_item == 'chỉ quét video':
+                        chiquetvideo('/')
+                    elif self.select_item =='chỉ quét reels':
+                        chiquetreels('/')
+                    elif self.select_item == 'quét 10 video/reels gần nhất':
+                        quet10('/')
+                    ghifile()                
+                else:
+                    # linkchinhxac(self.listlink[i])
+                    print(self.listlink[i])
+                    if self.select_item == 'quét full page':
+                        chay('&sk=')
+                    elif self.select_item == 'chỉ quét follow':
+                        chifollows('&sk=')
+                    elif self.select_item == 'chỉ quét video':
+                        chiquetvideo('&sk=')
+                    elif self.select_item =='chỉ quét reels':
+                        chiquetreels('&sk=')
+                    elif self.select_item == 'quét 10 video/reels gần nhất':
+                        quet10('&sk=')
+                    ghifile()
 
-                try:
-                    
-                    a = browser.find_element(By.XPATH,"/html/body/div[1]/div/div[1]/div/div[5]/div/div/div[1]/div/div[2]/div/div/div/div[1]/div")
-                    a.click()
-                except:
-                    pass
-                if self.select_item == 'quét full page':
-                    chay('&sk=')
-                elif self.select_item == 'chỉ quét follow':
-                    chifollows('&sk=')
-                elif self.select_item == 'chỉ quét video':
-                    chiquetvideo('&sk=')
-                elif self.select_item =='chỉ quét reels':
-                    chiquetreels('&sk=')
-                elif self.select_item == 'quét 10 video/reels gần nhất':
-                    quet10('&sk=')
-                ghifile()
         browser.quit()
+            
+        
         self.signal.emit("Đã crawl xong du lieu")
 
 
@@ -711,7 +842,6 @@ widget = QtWidgets.QStackedWidget()
 caw = crawldata()
 widget.addWidget(caw)
 ui = Ui_Dialog()
-# mainwd.show()
 widget.setFixedHeight(HEIGHT)
 widget.setFixedWidth(WIDTH)
 widget.show()
